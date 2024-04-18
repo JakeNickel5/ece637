@@ -5,7 +5,7 @@ from PIL import Image
 import sympy
 import os
 import scipy
-
+from scipy.ndimage import convolve
 
 def threshold(im,T):
     c=im.shape[0]
@@ -34,12 +34,15 @@ def RMSE(tim, im):
 def fidelity(tim, im):
     tg=ungamma(tim, 2.2)
     img=ungamma(im, 2.2)
-    lt=lpf(tg, 7, 2)
-    lim=lpf(img, 7, 2)
+    kernel=kernel_gauss(7, 2)
+
+    # lt = filter_fir(tg, kernel)
+    # lim = filter_fir(img, kernel)
+    lt = convolve(tg, kernel, mode='nearest')
+    lim = convolve(img, kernel, mode='nearest')
+    
     btilde=255*pow((lt/255), (1/3))
     ftilde=255*pow((lim/255), (1/3))
-    c=btilde.shape[0]
-    r=btilde.shape[1]
     return RMSE(btilde, ftilde)
 
 def ungamma(im, gamma):
@@ -49,12 +52,15 @@ def ungamma(im, gamma):
             corrected[i][j]=255*pow((im[i][j]/255), gamma)
     return corrected
 
-def lpf(im, ksize, sigma):
+def kernel_gauss(ksize, sigma):
     lpfdx=ksize//2
     sq=np.square(range(-lpfdx, lpfdx+1)).reshape([ksize, 1])
     sq=sq+sq.T
     kernel=np.exp(-sq/(2*sigma))
     kernel/=kernel.sum()
+    return kernel
+
+def filter_fir(im, kernel):
     ky=kernel.shape[0]
     kx=kernel.shape[1]
     dy=ky//2
